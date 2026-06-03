@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资产组合展示</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --panel: rgba(20, 27, 42, 0.86);
+    --panel-strong: rgba(30, 39, 58, 0.96);
+    --line: rgba(255, 255, 255, 0.11);
+    --text: #fbfdff;
+    --muted: #b3bfd5;
+    --green: #30d158;
+    --red: #ff647c;
+    --amber: #ff9f0a;
+    --cyan: #64d2ff;
+    --blue: #0a84ff;
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+    --page-bg:
+      radial-gradient(circle at top left, rgba(10, 132, 255, 0.2), transparent 30%),
+      radial-gradient(circle at top right, rgba(100, 210, 255, 0.12), transparent 24%),
+      linear-gradient(180deg, #111725 0%, #151c2c 48%, #0f1522 100%);
+    --header-chip-bg: rgba(255, 255, 255, 0.08);
+    --table-row-hover: rgba(255, 255, 255, 0.055);
+    --weight-border: rgba(255, 255, 255, 0.12);
+    --weight-bg: rgba(255, 255, 255, 0.08);
+    --toggle-bg: rgba(255, 255, 255, 0.06);
+    --toggle-active-bg: rgba(255, 255, 255, 0.16);
+    --surface-inset: rgba(255, 255, 255, 0.05);
+    --toggle-thumb: #f5f7fb;
+    --toggle-active-icon: #0f1522;
+  }
+
+  body[data-theme="light"] {
+    color-scheme: light;
+    --panel: rgba(255, 255, 255, 0.78);
+    --panel-strong: rgba(255, 255, 255, 0.94);
+    --line: rgba(60, 60, 67, 0.12);
+    --text: #111827;
+    --muted: #6b7280;
+    --green: #16a34a;
+    --red: #e11d48;
+    --amber: #d97706;
+    --cyan: #0284c7;
+    --blue: #007aff;
+    --shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    --page-bg:
+      radial-gradient(circle at top left, rgba(0, 122, 255, 0.12), transparent 28%),
+      linear-gradient(180deg, #f5f5f7 0%, #eff3f9 52%, #f7f8fb 100%);
+    --header-chip-bg: rgba(255, 255, 255, 0.72);
+    --table-row-hover: rgba(60, 60, 67, 0.045);
+    --weight-border: rgba(0, 122, 255, 0.14);
+    --weight-bg: rgba(0, 122, 255, 0.08);
+    --toggle-bg: rgba(120, 120, 128, 0.12);
+    --toggle-active-bg: rgba(255, 255, 255, 0.96);
+    --surface-inset: rgba(255, 255, 255, 0.56);
+    --toggle-thumb: #111827;
+    --toggle-active-icon: #ffffff;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    color: var(--text);
+  }
+
+  .shell {
+    width: min(980px, calc(100vw - 24px));
+    margin: 0 auto;
+    padding: 10px 0 16px;
+  }
+
+  .hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 2.6vw, 30px);
+    line-height: 1.08;
+    letter-spacing: 0;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .action-button {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 12px;
+    background: var(--panel-strong);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    backdrop-filter: blur(20px);
+  }
+
+  .action-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .action-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
+  }
+
+  .theme-toggle {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: repeat(2, 40px);
+    align-items: center;
+    gap: 0;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--panel-strong);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.04);
+  }
+
+  .theme-toggle::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 40px;
+    height: calc(100% - 6px);
+    border-radius: 999px;
+    background: var(--toggle-thumb);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+    transform: translateX(0);
+    transition: transform 0.2s ease;
+  }
+
+  body[data-theme="light"] .theme-toggle::before {
+    transform: translateX(40px);
+  }
+
+  .theme-button {
+    position: relative;
+    z-index: 1;
+    border: 0;
+    border-radius: 999px;
+    width: 40px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .theme-button svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    margin: 0 auto;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .theme-button.active {
+    color: var(--toggle-active-icon);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .stat,
+  .panel {
+    padding: 14px 14px 13px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat::before,
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%);
+    pointer-events: none;
+  }
+
+  .stat-label {
+    position: relative;
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    position: relative;
+    font-size: clamp(22px, 2.5vw, 28px);
+    font-weight: 700;
+  }
+
+  .stat-note,
+  .panel-meta {
+    position: relative;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+
+  .panel-title {
+    margin: 0;
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-inset);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    padding: 12px 12px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tbody td {
+    padding: 13px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--table-row-hover);
+  }
+
+  .symbol {
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .name {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .positive {
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .negative {
+    color: var(--red);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .neutral {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .weight-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--weight-border);
+    background: var(--weight-bg);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text);
+    backdrop-filter: blur(14px);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--toggle-bg);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1;
+    border: 1px solid var(--line);
+  }
+
+  .status::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--amber);
+  }
+
+  .status.ready::before {
+    background: var(--green);
+  }
+
+  .status.error::before {
+    background: var(--red);
+  }
+
+  @media (max-width: 980px) {
+    .timestamp {
+      text-align: left;
+    }
+
+    .hero {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .shell {
+      width: min(100vw - 18px, 100%);
+      padding-top: 14px;
+    }
+
+    .stats {
+      grid-template-columns: 1fr;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    thead th,
+    tbody td {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .theme-toggle {
+      width: auto;
+    }
+
+    .action-button,
+    .theme-button {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+</head>
+<body data-theme="dark">
+<div class="shell">
+  <header class="hero">
+    <div>
+      <h1>我的资产组合</h1>
+    </div>
+    <div class="controls">
+      <div class="theme-toggle" role="tablist" aria-label="切换主题">
+        <button class="theme-button active" type="button" data-theme-value="dark" aria-label="深色主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+          </svg>
+        </button>
+        <button class="theme-button" type="button" data-theme-value="light" aria-label="浅色主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="stats">
+    <article class="stat">
+      <div class="stat-label">加权当日涨跌</div>
+      <div class="stat-value neutral" id="weightedDay">--</div>
+      <div class="stat-note">仅按拿到当日涨跌的数据计算</div>
+    </article>
+    <article class="stat">
+      <div class="stat-label">加权年初至今</div>
+      <div class="stat-value neutral" id="weightedYtd">--</div>
+      <div class="stat-note">仅按拿到年初数据的资产计算</div>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">持仓明细</h2>
+        <div class="panel-meta">权重、日涨跌、年初至今表现</div>
+      </div>
+      <div class="controls">
+        <div class="status" id="fetchStatus">加载中</div>
+        <button class="action-button" type="button" id="panelRefreshButton">刷新</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>资产</th>
+            <th>权重</th>
+            <th>当日涨跌</th>
+            <th>年初至今</th>
+          </tr>
+        </thead>
+        <tbody id="portfolioTable"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+const portfolio = [
+  { symbol: "usQQQ", historySymbol: "usQQQ.OQ", name: "纳斯达克100 ETF", weight: 15, type: "equity" },
+  { symbol: "usVOO", historySymbol: "usVOO.AM", name: "标普500 ETF", weight: 35, type: "equity" },
+  { symbol: "usSPMO", historySymbol: "usSPMO.AM", name: "标普500动量ETF", weight: 15, type: "equity" },
+  { symbol: "usGLD", historySymbol: "usGLD.AM", name: "SPDR黄金ETF", weight: 10, type: "gold" },
+  { symbol: "sh515450", historySymbol: "sh515450", name: "南方标普中国A股大盘红利低波50ETF", weight: 20, type: "equity" },
+  { symbol: "jj000198", name: "现金", detail: "天弘余额宝货币", weight: 5, type: "cash" }
+];
+
+let isRefreshing = false;
+
+function formatPercent(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "--";
+  }
+
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+function getTrendClass(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "neutral";
+  }
+  if (value > 0) {
+    return "positive";
+  }
+  if (value < 0) {
+    return "negative";
+  }
+  return "neutral";
+}
+
+function updateSummary(items) {
+  const validDayItems = items.filter(item => typeof item.day === "number" && !Number.isNaN(item.day));
+  const validDayWeight = validDayItems.reduce((sum, item) => sum + item.weight, 0);
+  const weightedDay = validDayWeight > 0
+    ? validDayItems.reduce((sum, item) => sum + (item.day * item.weight / validDayWeight), 0)
+    : undefined;
+
+  const validYtdItems = items.filter(item => typeof item.ytd === "number" && !Number.isNaN(item.ytd));
+  const validYtdWeight = validYtdItems.reduce((sum, item) => sum + item.weight, 0);
+  const weightedYtd = validYtdWeight > 0
+    ? validYtdItems.reduce((sum, item) => sum + (item.ytd * item.weight / validYtdWeight), 0)
+    : undefined;
+
+  const weightedDayNode = document.getElementById("weightedDay");
+  weightedDayNode.textContent = formatPercent(weightedDay);
+  weightedDayNode.className = `stat-value ${getTrendClass(weightedDay)}`;
+
+  const weightedYtdNode = document.getElementById("weightedYtd");
+  weightedYtdNode.textContent = formatPercent(weightedYtd);
+  weightedYtdNode.className = `stat-value ${getTrendClass(weightedYtd)}`;
+}
+
+async function fetchTencentData(symbols) {
+  const url = `https://qt.gtimg.cn/q=${symbols.join(",")}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const lines = text.split(";");
+  const data = {};
+
+  lines.forEach(line => {
+    const match = line.match(/v_(.+)="(.+)"/);
+    if (match) {
+      const [, symbol, content] = match;
+      const fields = content.split("~");
+      data[symbol] = {
+        price: parseFloat(fields[3]),
+        change: parseFloat(fields[31]),
+        day: parseFloat(fields[32]),
+        ytd: undefined
+      };
+    }
+  });
+
+  return data;
+}
+
+async function fetchYtdData(symbol) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const startDate = `${year}-01-01`;
+  const endDate = `${year}-12-31`;
+  const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_dayqfq&param=${symbol},day,${startDate},${endDate},320,qfq`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const jsonText = text.includes("=") ? text.slice(text.indexOf("=") + 1) : text;
+  const parsed = JSON.parse(jsonText);
+  const seriesRoot = parsed?.data?.[symbol];
+
+  if (!seriesRoot) {
+    return undefined;
+  }
+
+  const series = seriesRoot.qfqday || seriesRoot.day;
+  if (!Array.isArray(series) || series.length === 0) {
+    return undefined;
+  }
+
+  const firstTradingDay = series[0];
+  const firstClose = parseFloat(firstTradingDay[2]);
+  return Number.isFinite(firstClose) ? firstClose : undefined;
+}
+
+function formatDisplaySymbol(symbol) {
+  if (symbol === "jj000198") {
+    return "000198";
+  }
+
+  return symbol.replace(/^(us|sh|sz|hk|bj)/, "");
+}
+
+function renderTable(items) {
+  const table = document.getElementById("portfolioTable");
+  table.innerHTML = "";
+
+  items.forEach(item => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>
+        <div class="symbol">${item.name}</div>
+        <div class="name">${item.detail || formatDisplaySymbol(item.symbol)}</div>
+      </td>
+      <td><span class="weight-pill">${item.weight}%</span></td>
+      <td class="${getTrendClass(item.day)}">${formatPercent(item.day)}</td>
+      <td class="${getTrendClass(item.ytd)}">${formatPercent(item.ytd)}</td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  document.querySelectorAll(".theme-button").forEach(button => {
+    button.classList.toggle("active", button.dataset.themeValue === theme);
+  });
+  localStorage.setItem("portfolio-theme", theme);
+}
+
+function setRefreshState(loading) {
+  isRefreshing = loading;
+  ["panelRefreshButton"].forEach(id => {
+    const refreshButton = document.getElementById(id);
+    if (!refreshButton) {
+      return;
+    }
+    refreshButton.disabled = loading;
+    refreshButton.textContent = loading ? "刷新中..." : "刷新";
+  });
+}
+
+async function renderPortfolio() {
+  if (isRefreshing) {
+    return;
+  }
+
+  setRefreshState(true);
+  const status = document.getElementById("fetchStatus");
+  const items = portfolio.map(item => ({ ...item }));
+
+  const now = new Date();
+
+  try {
+    const symbols = items
+      .filter(item => /^(us|sh|sz|hk|bj|jj)/.test(item.symbol))
+      .map(item => item.symbol);
+    const tencentData = await fetchTencentData(symbols);
+    const ytdStartPrices = await Promise.all(
+      items.map(async item => {
+        if (!item.historySymbol) {
+          return [item.symbol, undefined];
+        }
+
+        try {
+          const startPrice = await fetchYtdData(item.historySymbol);
+          return [item.symbol, startPrice];
+        } catch (error) {
+          console.error(`Failed to load YTD data for ${item.symbol}`, error);
+          return [item.symbol, undefined];
+        }
+      })
+    );
+    const ytdStartPriceMap = Object.fromEntries(ytdStartPrices);
+
+    items.forEach(item => {
+      if (/^(us|sh|sz|hk|bj)/.test(item.symbol)) {
+        const data = tencentData[item.symbol];
+        const startPrice = ytdStartPriceMap[item.symbol];
+        item.price = data?.price;
+        item.day = data?.day;
+        item.ytd = typeof data?.price === "number" && typeof startPrice === "number"
+          ? ((data.price / startPrice) - 1) * 100
+          : undefined;
+      } else if (item.symbol === "jj000198") {
+        const data = tencentData[item.symbol];
+        item.price = typeof data?.price === "number" && data.price > 0 ? data.price : undefined;
+        item.day = typeof data?.day === "number" && data.day !== 0 ? data.day : undefined;
+        item.ytd = undefined;
+      }
+    });
+
+    const updatedAt = now.toLocaleTimeString("zh-CN", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    status.textContent = `已更新 ${updatedAt}`;
+    status.className = "status ready";
+  } catch (error) {
+    console.error(error);
+    status.textContent = "行情加载失败";
+    status.className = "status error";
+  } finally {
+    setRefreshState(false);
+  }
+
+  renderTable(items);
+  updateSummary(items);
+}
+
+const savedTheme = localStorage.getItem("portfolio-theme");
+if (savedTheme === "light" || savedTheme === "dark") {
+  applyTheme(savedTheme);
+}
+
+document.querySelectorAll(".theme-button").forEach(button => {
+  button.addEventListener("click", () => applyTheme(button.dataset.themeValue));
+});
+
+["panelRefreshButton"].forEach(id => {
+  const button = document.getElementById(id);
+  if (button) {
+    button.addEventListener("click", () => {
+      renderPortfolio();
+    });
+  }
+});
+
+renderPortfolio();
+</script>
+</body>
+</html>
